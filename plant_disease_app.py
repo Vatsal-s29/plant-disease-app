@@ -10,7 +10,7 @@ from tensorflow.keras.applications import (
 )
 
 # ✅ Streamlit Page Config
-st.set_page_config(page_title="🌿 Enhanced Plant Disease Classifier", layout="centered")
+st.set_page_config(page_title="🌿 Plant Disease Classifier", layout="centered")
 
 # Parameters
 IMG_SIZE = (128, 128)
@@ -37,12 +37,11 @@ CLASS_LABELS = [
     "Pepper,_bell___healthy"
 ]
 
-# Preprocessing functions
+# Preprocessing
 efficientnet_preprocess = efficientnet.preprocess_input
 mobilenet_preprocess = mobilenet_v2.preprocess_input
 densenet_preprocess = densenet.preprocess_input
 
-# Load Models (cache to avoid reloading)
 @st.cache_resource
 def load_models():
     model1 = tf.keras.models.load_model("efficientnetb0_final.h5")
@@ -52,14 +51,12 @@ def load_models():
 
 model1, model2, model3 = load_models()
 
-# Image Preprocessing for each model
 def preprocess_image_for_model(image, preprocess_fn):
     image = image.resize(IMG_SIZE)
-    image_array = tf.keras.preprocessing.image.img_to_array(image)
-    image_array = preprocess_fn(image_array)
-    return np.expand_dims(image_array, axis=0)
+    img_array = tf.keras.preprocessing.image.img_to_array(image)
+    img_array = preprocess_fn(img_array)
+    return np.expand_dims(img_array, axis=0)
 
-# Prediction
 def ensemble_predict(image):
     input1 = preprocess_image_for_model(image, efficientnet_preprocess)
     input2 = preprocess_image_for_model(image, mobilenet_preprocess)
@@ -68,34 +65,38 @@ def ensemble_predict(image):
     preds1 = model1.predict(input1, verbose=0)[0]
     preds2 = model2.predict(input2, verbose=0)[0]
     preds3 = model3.predict(input3, verbose=0)[0]
-    
+
     # Weighted average
-    ensemble_pred = (0.03 * preds1 + 0.53 * preds2 + 0.44 * preds3)
-    
-    predicted_class = np.argmax(ensemble_pred)
-    confidence = ensemble_pred[predicted_class]
-    return CLASS_LABELS[predicted_class], confidence, ensemble_pred
+    final_pred = (0.03 * preds1 + 0.53 * preds2 + 0.44 * preds3)
+
+    predicted_class = np.argmax(final_pred)
+    confidence = final_pred[predicted_class]
+    return CLASS_LABELS[predicted_class], confidence, final_pred
 
 # UI
-st.title("🌿 Plant Disease Detection App")
-st.write("Upload a plant leaf image and the ensemble model will predict the disease class.")
+st.markdown("## 🌱 Welcome to the Plant Disease Detection App!")
+st.markdown("Upload an image of a plant leaf, and this ensemble-powered model will predict the disease class with high accuracy.")
 
-uploaded_file = st.file_uploader("📤 Choose an image...", type=["jpg", "jpeg", "png"])
+uploaded_file = st.file_uploader("📤 Upload an image (jpg, jpeg, png)", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
     image = Image.open(uploaded_file).convert("RGB")
-    st.image(image, caption="🖼️ Uploaded Image", use_container_width=True)
-    
-    with st.spinner("🔍 Predicting..."):
-        predicted_label, confidence, raw_probs = ensemble_predict(image)
 
-    st.success(f"✅ **Predicted Disease**: `{predicted_label}`")
-    st.write(f"📈 **Confidence**: `{confidence * 100:.2f}%`")
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        st.image(image, caption="🖼️ Uploaded Leaf", use_container_width=True)
 
-    # 📊 Show class probabilities
-    st.subheader("📊 Prediction Probabilities")
-    prob_df = pd.DataFrame({
-        "Class": CLASS_LABELS,
-        "Probability": raw_probs
-    }).set_index("Class")
-    st.bar_chart(prob_df)
+    with col2:
+        with st.spinner("🔍 Running ensemble prediction..."):
+            predicted_label, confidence, probabilities = ensemble_predict(image)
+        
+        st.success("✅ Prediction Complete!")
+        st.markdown(f"### 🦠 Disease: `{predicted_label}`")
+        st.markdown(f"### 📈 Confidence: `{confidence * 100:.2f}%`")
+
+    with st.expander("📊 Show All Class Probabilities", expanded=False):
+        prob_df = pd.DataFrame({
+            "Class": CLASS_LABELS,
+            "Probability": probabilities
+        }).set_index("Class")
+        st.bar_chart(prob_df)
