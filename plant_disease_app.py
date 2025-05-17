@@ -74,7 +74,7 @@ def ensemble_predict(image):
     return CLASS_LABELS[predicted_class], confidence, final_pred
 
 # UI
-st.markdown("## 🌱 Welcomelll to the Plant Disease Detection App!")
+st.markdown("## 🌱 Welcome to the Plant Disease Detection App!")
 st.markdown("Upload an image of a plant leaf, and this ensemble-powered model will predict the disease class with high accuracy.")
 st.markdown("---")
 
