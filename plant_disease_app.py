@@ -74,10 +74,14 @@ def ensemble_predict(image):
     return CLASS_LABELS[predicted_class], confidence, final_pred
 
 # UI
-st.markdown("## 🌱 Welcome to the Plant Disease Detection App!")
+st.markdown("## 🌱 Welcomelll to the Plant Disease Detection App!")
 st.markdown("Upload an image of a plant leaf, and this ensemble-powered model will predict the disease class with high accuracy.")
+st.markdown("---")
 
-uploaded_file = st.file_uploader("📤 Upload an image (jpg, jpeg, png)", type=["jpg", "jpeg", "png"])
+# Centered Upload Box
+col_center = st.columns([2, 4, 2])
+with col_center[1]:
+    uploaded_file = st.file_uploader("📤 Upload an image (jpg, jpeg, png)", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
     image = Image.open(uploaded_file).convert("RGB")
@@ -92,11 +96,31 @@ if uploaded_file is not None:
         
         st.success("✅ Prediction Complete!")
         st.markdown(f"### 🦠 Disease: `{predicted_label}`")
-        st.markdown(f"### 📈 Confidence: `{confidence * 100:.2f}%`")
 
     with st.expander("📊 Show All Class Probabilities", expanded=False):
         prob_df = pd.DataFrame({
             "Class": CLASS_LABELS,
             "Probability": probabilities
-        }).set_index("Class")
+        }).set_index("Class").sort_values("Probability", ascending=True)
         st.bar_chart(prob_df)
+
+# -----------------------
+# Supported Species Dropdown
+# -----------------------
+st.markdown("## 🌾 Supported Species & Diseases")
+
+# Extract species and group diseases
+from collections import defaultdict
+species_diseases = defaultdict(list)
+
+for entry in CLASS_LABELS:
+    if "___" in entry:
+        species, disease = entry.split("___")
+    else:
+        species, disease = entry, "healthy"
+    species_diseases[species].append(disease)
+
+for species, diseases in sorted(species_diseases.items()):
+    with st.expander(f"🌿 {species.replace('_', ' ')}"):
+        for disease in diseases:
+            st.markdown(f"- {disease.replace('_', ' ')}")
