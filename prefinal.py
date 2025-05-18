@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components  # ✅ Added for mobile detection
 import tensorflow as tf
 import numpy as np
 import pandas as pd
@@ -8,6 +9,7 @@ from tensorflow.keras.applications import (
     mobilenet_v2,
     efficientnet
 )
+import io  # ✅ Added for report download
 
 # ✅ Streamlit Page Config
 st.set_page_config(page_title="🌿 Plant Disease Classifier", layout="centered")
@@ -164,23 +166,62 @@ if uploaded_file is not None:
         st.image(image, caption="🖼️ Uploaded Leaf", use_container_width=True)
 
     with col2:
-        with st.spinner("🔍 Running ensemble prediction..."):
-            predicted_label, confidence, probabilities = ensemble_predict(image)
-        
-        st.success("✅ Prediction Complete!")
-        st.markdown(f"### 🦠 Likely Disease: `{predicted_label}`")
+        # Run prediction
+        predicted_label, confidence, probabilities = ensemble_predict(image)
 
-        # Chatbot
-        st.markdown(
-            """
-            <a href="https://549e1cfa6993f02828.gradio.live" target="_blank" style="text-decoration: none;">
-                <div style="margin-top: 20px; padding: 10px; border-left: 5px solid #f4a261; background-color: #fff3e0; border-radius: 5px; color: black;">
-                    💡 <strong>Get AI assisted help</strong>
-                </div>
-            </a>
-            """,
-            unsafe_allow_html=True
-        )
+        # Get top 3 predictions
+        top3_indices = np.argsort(probabilities)[-3:][::-1]
+        top3_labels = [CLASS_LABELS[idx] for idx in top3_indices]
+
+        # Initialize session state variables if not already set
+        if "top3_labels" not in st.session_state:
+            st.session_state.top3_labels = top3_labels
+            st.session_state.label_index = 0  # Start with the top prediction
+
+        # Get the current label to show
+        current_label = st.session_state.top3_labels[st.session_state.label_index]
+
+        # Display result
+        st.success("✅ Prediction Complete!")
+        st.markdown(f"### 🦠 Likely Disease: `{current_label}`")
+
+        # Inject CSS for orange smaller button
+        st.markdown("""
+            <style>
+            div.stButton > button:first-child {
+                background-color: #fff3e0;
+                color: #f4a261;
+                padding: 0.25rem 0.75rem;
+                font-size: 14px;
+                border-radius: 5px;
+                border: 1px solid #f4a261;
+                transition: background-color 0.3s ease;
+            }
+            div.stButton > button:first-child:hover {
+                background-color: #f4a261;
+                color: white;
+                border-color: #f4a261;
+            }
+            </style>
+        """, unsafe_allow_html=True)
+
+        # Button to cycle predictions
+        if st.button("Wrong Prediction? → Repredict"):
+            st.session_state.label_index = (st.session_state.label_index + 1) % len(st.session_state.top3_labels)
+            st.rerun()
+
+    # Chatbot
+    # 💡 AI Assistance Chatbot
+    st.markdown(
+        """
+        <a href="https://549e1cfa6993f02828.gradio.live" target="_blank" style="text-decoration: none;">
+            <div style="margin-top: 10px; margin-bottom: 10px; padding: 10px; border-left: 5px solid #4a90e2; background-color: #e6f0ff; border-radius: 5px; color: black;">
+                💡 <strong>Get AI assisted help</strong>
+            </div>
+        </a>
+        """,
+        unsafe_allow_html=True
+    )
 
     with st.expander("📊 Show All Class Probabilities", expanded=False):
         prob_df = pd.DataFrame({
@@ -191,15 +232,13 @@ if uploaded_file is not None:
 
 else:
     # 💡 AI Assistance Chatbot
-        st.markdown(
-            """
-            <a href="https://549e1cfa6993f02828.gradio.live" target="_blank" style="text-decoration: none;">
-                <div style="margin-top: 20px; padding: 10px; border-left: 5px solid #f4a261; background-color: #fff3e0; border-radius: 5px; color: black;">
-                    💡 <strong>Get AI assisted help</strong>
-                </div>
-            </a>
-            """,
-            unsafe_allow_html=True
-        )
-
-
+    st.markdown(
+        """
+        <a href="https://549e1cfa6993f02828.gradio.live" target="_blank" style="text-decoration: none;">
+            <div style="margin-top: 10px; padding: 10px; border-left: 5px solid #4a90e2; background-color: #e6f0ff; border-radius: 5px; color: black;">
+                💡 <strong>Get AI assisted help</strong>
+            </div>
+        </a>
+        """,
+        unsafe_allow_html=True
+    )

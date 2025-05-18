@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components  # ✅ Added for mobile detection
 import tensorflow as tf
 import numpy as np
 import pandas as pd
@@ -74,28 +75,159 @@ def ensemble_predict(image):
     return CLASS_LABELS[predicted_class], confidence, final_pred
 
 # UI
-st.markdown("## 🌱 Welcome to the Plant Disease Detection App!")
-st.markdown("Upload an image of a plant leaf, and this ensemble-powered model will predict the disease class with high accuracy.")
+
+st.markdown("# 🌱 Welcome to the Plant Disease Detection App!")
+st.write("This app uses an ensemble of deep learning models to predict the presence of plant diseases.")
 st.markdown("---")
 
-# Centered Upload Box
-col_center = st.columns([2, 4, 2])
-with col_center[1]:
-    uploaded_file = st.file_uploader("📤 Upload an image (jpg, jpeg, png)", type=["jpg", "jpeg", "png"])
+# -----------------------
+# Supported Species Dropdown
+# -----------------------
+st.markdown("## 🌾 Supported Species & Diseases")
+
+# Static species and diseases mapping
+static_species_diseases = [
+    ("🍎 Apple", [
+        "Apple scab",
+        "Black rot",
+        "Cedar apple rust",
+        "healthy"
+    ]),
+    ("🫐 Blueberry", [
+        "healthy"
+    ]),
+    ("🍒 Cherry (including sour)", [
+        "Powdery mildew",
+        "healthy"
+    ]),
+    ("🌽 Corn (maize)", [
+        "Cercospora leaf spot / Gray leaf spot",
+        "Common rust",
+        "Northern Leaf Blight",
+        "healthy"
+    ]),
+    ("🍇 Grape", [
+        "Black rot",
+        "Esca (Black Measles)",
+        "Leaf blight (Isariopsis Leaf Spot)",
+        "healthy"
+    ]),
+    ("🍊 Orange", [
+        "Haunglongbing (Citrus greening)"
+    ]),
+    ("🍑 Peach", [
+        "Bacterial spot",
+        "healthy"
+    ]),
+    ("🫑 Pepper, bell", [
+        "Bacterial spot",
+        "healthy"
+    ])
+]
+
+# Color mapping
+color_map = {
+    "🍎": "#d62828",
+    "🫐": "#4f518c",
+    "🍒": "#b5179e",
+    "🌽": "#f4a261",
+    "🍇": "#6a0572",
+    "🍊": "#f77f00",
+    "🍑": "#ffb347",
+    "🫑": "#2a9d8f"
+}
+
+# Two per row display (compact layout + colored list items)
+for i in range(0, len(static_species_diseases), 2):
+    cols = st.columns(2)
+    for col_idx in range(2):
+        if i + col_idx < len(static_species_diseases):
+            species_name, disease_list = static_species_diseases[i + col_idx]
+            emoji = species_name.split(" ")[0]
+            color = color_map.get(emoji, "#000000")  # Fallback to black
+            with cols[col_idx].expander(species_name):
+                for disease in disease_list:
+                    st.markdown(
+                        f"<li style='margin-left:10px; font-size:15px; color:{color}'>{disease}</li>",
+                        unsafe_allow_html=True
+                    )
+
+st.markdown("Upload an image of a plant leaf, and this ensemble-powered model will predict the disease class with high accuracy.")
+
+# Check if mobile
+is_mobile = st.query_params.get("mobile", ["false"])[0] == "true"
+
+# Upload Box
+uploaded_file = st.file_uploader("📤 Upload an image (jpg, jpeg, png)", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
     image = Image.open(uploaded_file).convert("RGB")
 
-    col1, col2 = st.columns([1, 2])
+    # ✅ Reset session state for new image upload
+    if "last_uploaded" not in st.session_state or st.session_state.last_uploaded != uploaded_file.name:
+        st.session_state.last_uploaded = uploaded_file.name
+        st.session_state.top3_labels = None
+        st.session_state.label_index = 0
+
+    columns = st.columns(1 if is_mobile else 2)
+    col1, col2 = columns
     with col1:
         st.image(image, caption="🖼️ Uploaded Leaf", use_container_width=True)
 
     with col2:
-        with st.spinner("🔍 Running ensemble prediction..."):
-            predicted_label, confidence, probabilities = ensemble_predict(image)
-        
+        # Run prediction
+        predicted_label, confidence, probabilities = ensemble_predict(image)
+
+        # Get top 3 predictions
+        top3_indices = np.argsort(probabilities)[-3:][::-1]
+        top3_labels = [CLASS_LABELS[idx] for idx in top3_indices]
+
+        # Initialize session state variables if not already set
+        if st.session_state.top3_labels is None:
+            st.session_state.top3_labels = top3_labels
+
+        # Get the current label to show
+        current_label = st.session_state.top3_labels[st.session_state.label_index]
+
+        # Display result
         st.success("✅ Prediction Complete!")
-        st.markdown(f"### 🦠 Disease: `{predicted_label}`")
+        st.markdown(f"### 🦠 Likely Disease: `{current_label}`")
+
+        # ✅ Styled repredict button
+        st.markdown("""
+            <style>
+            div.stButton > button:first-child {
+                background-color: #fff3e0;
+                color: #f4a261;
+                padding: 0.25rem 0.75rem;
+                font-size: 14px;
+                border-radius: 5px;
+                border: 1px solid #f4a261;
+                transition: background-color 0.3s ease;
+            }
+            div.stButton > button:first-child:hover {
+                background-color: #f4a261;
+                color: white;
+                border-color: #f4a261;
+            }
+            </style>
+        """, unsafe_allow_html=True)
+
+        if st.button("Wrong Prediction? → Repredict"):
+            st.session_state.label_index = (st.session_state.label_index + 1) % len(st.session_state.top3_labels)
+            st.rerun()
+
+    # 💡 AI Assistance Chatbot
+    st.markdown(
+        """
+        <a href="https://549e1cfa6993f02828.gradio.live" target="_blank" style="text-decoration: none;">
+            <div style="margin-top: 10px; margin-bottom: 10px; padding: 10px; border-left: 5px solid #4a90e2; background-color: #e6f0ff; border-radius: 5px; color: black;">
+                💡 <strong>Get AI assisted help</strong>
+            </div>
+        </a>
+        """,
+        unsafe_allow_html=True
+    )
 
     with st.expander("📊 Show All Class Probabilities", expanded=False):
         prob_df = pd.DataFrame({
@@ -104,23 +236,15 @@ if uploaded_file is not None:
         }).set_index("Class").sort_values("Probability", ascending=True)
         st.bar_chart(prob_df)
 
-# -----------------------
-# Supported Species Dropdown
-# -----------------------
-st.markdown("## 🌾 Supported Species & Diseases")
-
-# Extract species and group diseases
-from collections import defaultdict
-species_diseases = defaultdict(list)
-
-for entry in CLASS_LABELS:
-    if "___" in entry:
-        species, disease = entry.split("___")
-    else:
-        species, disease = entry, "healthy"
-    species_diseases[species].append(disease)
-
-for species, diseases in sorted(species_diseases.items()):
-    with st.expander(f"🌿 {species.replace('_', ' ')}"):
-        for disease in diseases:
-            st.markdown(f"- {disease.replace('_', ' ')}")
+else:
+    # 💡 AI Assistance Chatbot
+    st.markdown(
+        """
+        <a href="https://549e1cfa6993f02828.gradio.live" target="_blank" style="text-decoration: none;">
+            <div style="margin-top: 10px; padding: 10px; border-left: 5px solid #4a90e2; background-color: #e6f0ff; border-radius: 5px; color: black;">
+                💡 <strong>Get AI assisted help</strong>
+            </div>
+        </a>
+        """,
+        unsafe_allow_html=True
+    )
