@@ -240,7 +240,7 @@ else:
     # 💡 AI Assistance Chatbot
     st.markdown(
         """
-        <a href="https://549e1cfa6993f02828.gradio.live" target="_blank" style="text-decoration: none;">
+        <a href="https://ecf82da8b217e9232e.gradio.live" target="_blank" style="text-decoration: none;">
             <div style="margin-top: 10px; padding: 10px; border-left: 5px solid #4a90e2; background-color: #e6f0ff; border-radius: 5px; color: black;">
                 💡 <strong>Get AI assisted help</strong>
             </div>
