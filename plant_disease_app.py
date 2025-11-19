@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit.components.v1 as components  # ✅ Added for mobile detection
 import tensorflow as tf
 import numpy as np
 import pandas as pd
@@ -13,50 +12,74 @@ import os
 os.environ["GRPC_POLL_STRATEGY"] = "epoll1"
 
 import google.generativeai as genai
-genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+
+# ✅ Safe API key configuration
+try:
+    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+except Exception as e:
+    st.error("⚠️ Gemini API key not configured. Please set GEMINI_API_KEY in secrets.")
+
+# ✅ Mobile detection function
+def is_mobile_device():
+    """Detect if user is on mobile using user agent."""
+    try:
+        # Check for mobile user agent patterns
+        user_agent = st.context.headers.get("User-Agent", "").lower()
+        mobile_keywords = ['android', 'iphone', 'ipad', 'mobile', 'windows phone']
+        return any(keyword in user_agent for keyword in mobile_keywords)
+    except:
+        return False
 
 def get_gemini_analysis(image, predicted_label):
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    """Get AI analysis of plant disease with error handling."""
+    try:
+        model = genai.GenerativeModel("gemini-1.5-flash")
 
-    # Convert PIL image → bytes
-    import io
-    img_byte_arr = io.BytesIO()
-    image.convert("RGB").save(img_byte_arr, format="JPEG")
-    img_bytes = img_byte_arr.getvalue()
+        # Convert PIL image → bytes
+        import io
+        img_byte_arr = io.BytesIO()
+        image.convert("RGB").save(img_byte_arr, format="JPEG")
+        img_bytes = img_byte_arr.getvalue()
 
-    prompt = f"""
-    You are an expert agricultural plant pathologist.
+        prompt = f"""
+        You are an expert agricultural plant pathologist.
 
-    The predicted disease is: **{predicted_label}**
+        The predicted disease is: **{predicted_label}**
 
-    Based on this disease, analyze the uploaded leaf image and provide:
+        Based on this disease, analyze the uploaded leaf image and provide:
 
-    1. **Severity** of the disease on a scale of 1 to 5  
-       - 1 = very mild  
-       - 5 = extremely severe
+        1. **Severity** of the disease on a scale of 1 to 5  
+           - 1 = very mild  
+           - 5 = extremely severe
 
-    2. **Chemical Medicines** (with exact product names or active ingredients)
+        2. **Chemical Medicines** (with exact product names or active ingredients)
 
-    3. **Natural Remedies** (homemade, organic, biological controls)
+        3. **Natural Remedies** (homemade, organic, biological controls)
 
-    4. **Best Farming Practices** specifically for this plant species
+        4. **Best Farming Practices** specifically for this plant species
 
-    Format your response in clean markdown.
-    """
+        Format your response in clean markdown.
+        """
 
-    response = model.generate_content(
-        [
-            prompt,
-            {"mime_type": "image/jpeg", "data": img_bytes}
-        ]
-    )
+        response = model.generate_content(
+            [
+                prompt,
+                {"mime_type": "image/jpeg", "data": img_bytes}
+            ]
+        )
 
-    return response.text if hasattr(response, "text") else str(response)
-
+        return response.text if hasattr(response, "text") else str(response)
+    
+    except Exception as e:
+        return f"⚠️ **Analysis Error**: {str(e)}\n\nPlease try again or check your API configuration."
 
 
 # ✅ Streamlit Page Config
-st.set_page_config(page_title="🌿 Plant Disease Classifier", layout="centered")
+st.set_page_config(
+    page_title="🌿 Plant Disease Classifier", 
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
 
 # Parameters
 IMG_SIZE = (128, 128)
@@ -83,113 +106,91 @@ CLASS_LABELS = [
     "Pepper,_bell___healthy"
 ]
 
-# Preprocessing
+# Preprocessing functions
 efficientnet_preprocess = efficientnet.preprocess_input
 mobilenet_preprocess = mobilenet_v2.preprocess_input
 densenet_preprocess = densenet.preprocess_input
 
 @st.cache_resource
 def load_models():
-    model1 = tf.keras.models.load_model("efficientnetb0_final.h5")
-    model2 = tf.keras.models.load_model("mobilenetv2_finetuned.h5")
-    model3 = tf.keras.models.load_model("densenet121_finetuned.h5")
-    return model1, model2, model3
+    """Load all three models with error handling."""
+    try:
+        model1 = tf.keras.models.load_model("efficientnetb0_final.h5")
+        model2 = tf.keras.models.load_model("mobilenetv2_finetuned.h5")
+        model3 = tf.keras.models.load_model("densenet121_finetuned.h5")
+        return model1, model2, model3
+    except Exception as e:
+        st.error(f"❌ Error loading models: {str(e)}")
+        st.stop()
 
-model1, model2, model3 = load_models()
+# Load models
+with st.spinner("🔄 Loading AI models..."):
+    model1, model2, model3 = load_models()
 
 def preprocess_image_for_model(image, preprocess_fn):
+    """Preprocess image for specific model."""
     image = image.resize(IMG_SIZE)
     img_array = tf.keras.preprocessing.image.img_to_array(image)
     img_array = preprocess_fn(img_array)
     return np.expand_dims(img_array, axis=0)
 
 def ensemble_predict(image):
-    input1 = preprocess_image_for_model(image, efficientnet_preprocess)
-    input2 = preprocess_image_for_model(image, mobilenet_preprocess)
-    input3 = preprocess_image_for_model(image, densenet_preprocess)
+    """Run ensemble prediction across all three models."""
+    try:
+        input1 = preprocess_image_for_model(image, efficientnet_preprocess)
+        input2 = preprocess_image_for_model(image, mobilenet_preprocess)
+        input3 = preprocess_image_for_model(image, densenet_preprocess)
 
-    preds1 = model1.predict(input1, verbose=0)[0]
-    preds2 = model2.predict(input2, verbose=0)[0]
-    preds3 = model3.predict(input3, verbose=0)[0]
+        preds1 = model1.predict(input1, verbose=0)[0]
+        preds2 = model2.predict(input2, verbose=0)[0]
+        preds3 = model3.predict(input3, verbose=0)[0]
 
-    # Weighted average
-    final_pred = (0.03 * preds1 + 0.53 * preds2 + 0.44 * preds3)
+        # Weighted average
+        final_pred = (0.03 * preds1 + 0.53 * preds2 + 0.44 * preds3)
 
-    predicted_class = np.argmax(final_pred)
-    confidence = final_pred[predicted_class]
-    return CLASS_LABELS[predicted_class], confidence, final_pred
+        predicted_class = np.argmax(final_pred)
+        confidence = final_pred[predicted_class]
+        return CLASS_LABELS[predicted_class], confidence, final_pred
+    
+    except Exception as e:
+        st.error(f"❌ Prediction Error: {str(e)}")
+        return None, None, None
 
-# UI
+# ============================================
+# UI SECTION
+# ============================================
 
-st.markdown("# 🌱 My Plant Buddy 🌱 ")
+st.markdown("# 🌱 My Plant Buddy 🌱")
 st.write("This app uses an ensemble of deep learning models to predict the presence of plant diseases.")
 st.markdown("---")
 
-# -----------------------
-# Supported Species Dropdown
-# -----------------------
+# Supported Species Section
 st.markdown("## 🌾 Supported Species & Diseases")
 
-# Static species and diseases mapping
 static_species_diseases = [
-    ("🍎 Apple", [
-        "Apple scab",
-        "Black rot",
-        "Cedar apple rust",
-        "healthy"
-    ]),
-    ("🫐 Blueberry", [
-        "healthy"
-    ]),
-    ("🍒 Cherry (including sour)", [
-        "Powdery mildew",
-        "healthy"
-    ]),
-    ("🌽 Corn (maize)", [
-        "Cercospora leaf spot / Gray leaf spot",
-        "Common rust",
-        "Northern Leaf Blight",
-        "healthy"
-    ]),
-    ("🍇 Grape", [
-        "Black rot",
-        "Esca (Black Measles)",
-        "Leaf blight (Isariopsis Leaf Spot)",
-        "healthy"
-    ]),
-    ("🍊 Orange", [
-        "Haunglongbing (Citrus greening)"
-    ]),
-    ("🍑 Peach", [
-        "Bacterial spot",
-        "healthy"
-    ]),
-    ("🫑 Pepper, bell", [
-        "Bacterial spot",
-        "healthy"
-    ])
+    ("🍎 Apple", ["Apple scab", "Black rot", "Cedar apple rust", "healthy"]),
+    ("🫐 Blueberry", ["healthy"]),
+    ("🍒 Cherry (including sour)", ["Powdery mildew", "healthy"]),
+    ("🌽 Corn (maize)", ["Cercospora leaf spot / Gray leaf spot", "Common rust", "Northern Leaf Blight", "healthy"]),
+    ("🍇 Grape", ["Black rot", "Esca (Black Measles)", "Leaf blight (Isariopsis Leaf Spot)", "healthy"]),
+    ("🍊 Orange", ["Haunglongbing (Citrus greening)"]),
+    ("🍑 Peach", ["Bacterial spot", "healthy"]),
+    ("🫑 Pepper, bell", ["Bacterial spot", "healthy"])
 ]
 
-# Color mapping
 color_map = {
-    "🍎": "#d62828",
-    "🫐": "#4f518c",
-    "🍒": "#b5179e",
-    "🌽": "#f4a261",
-    "🍇": "#6a0572",
-    "🍊": "#f77f00",
-    "🍑": "#ffb347",
-    "🫑": "#2a9d8f"
+    "🍎": "#d62828", "🫐": "#4f518c", "🍒": "#b5179e", "🌽": "#f4a261",
+    "🍇": "#6a0572", "🍊": "#f77f00", "🍑": "#ffb347", "🫑": "#2a9d8f"
 }
 
-# Two per row display (compact layout + colored list items)
+# Display species in two columns
 for i in range(0, len(static_species_diseases), 2):
     cols = st.columns(2)
     for col_idx in range(2):
         if i + col_idx < len(static_species_diseases):
             species_name, disease_list = static_species_diseases[i + col_idx]
             emoji = species_name.split(" ")[0]
-            color = color_map.get(emoji, "#000000")  # Fallback to black
+            color = color_map.get(emoji, "#000000")
             with cols[col_idx].expander(species_name):
                 for disease in disease_list:
                     st.markdown(
@@ -199,52 +200,71 @@ for i in range(0, len(static_species_diseases), 2):
 
 st.markdown("Upload an image of a plant leaf, and this ensemble-powered model will predict the disease class with high accuracy.")
 
-# Check if mobile
-is_mobile = st.query_params.get("mobile", ["false"])[0] == "true"
+# ✅ Detect if mobile
+is_mobile = is_mobile_device()
 
-# Upload Box
+# File uploader
 uploaded_file = st.file_uploader("📤 Upload an image (jpg, jpeg, png)", type=["jpg", "jpeg", "png"])
+
+# ============================================
+# PREDICTION SECTION
+# ============================================
 
 if uploaded_file is not None:
     image = Image.open(uploaded_file).convert("RGB")
 
-    # ✅ Reset session state for new image upload
+    # ✅ Initialize session state for new upload
     if "last_uploaded" not in st.session_state or st.session_state.last_uploaded != uploaded_file.name:
         st.session_state.last_uploaded = uploaded_file.name
         st.session_state.top3_labels = None
         st.session_state.label_index = 0
+        st.session_state.gemini_analyses = {}  # Cache analyses by label
 
-    columns = st.columns(1 if is_mobile else 2)
-    col1, col2 = columns
-    with col1:
+    # Create layout based on device
+    if is_mobile:
         st.image(image, caption="🖼️ Uploaded Leaf", use_container_width=True)
+        st.markdown("---")
+    else:
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            st.image(image, caption="🖼️ Uploaded Leaf", use_container_width=True)
 
-    with col2:
-        # Run prediction
-        predicted_label, confidence, probabilities = ensemble_predict(image)
+    # Run prediction only once
+    if st.session_state.top3_labels is None:
+        with st.spinner("🔍 Analyzing image..."):
+            predicted_label, confidence, probabilities = ensemble_predict(image)
+            
+            if predicted_label is None:
+                st.error("Failed to make prediction. Please try again.")
+                st.stop()
+            
+            # Get top 3 predictions
+            top3_indices = np.argsort(probabilities)[-3:][::-1]
+            st.session_state.top3_labels = [CLASS_LABELS[idx] for idx in top3_indices]
+            st.session_state.probabilities = probabilities
+
+    # Get current label
+    current_label = st.session_state.top3_labels[st.session_state.label_index]
+
+    # Display section (in col2 if desktop, or below image if mobile)
+    display_container = col2 if not is_mobile else st.container()
+    
+    with display_container:
+        # ✅ Get or generate Gemini analysis for current label
+        if current_label not in st.session_state.gemini_analyses:
+            with st.spinner("🔍 Analyzing severity & treatment recommendations..."):
+                st.session_state.gemini_analyses[current_label] = get_gemini_analysis(image, current_label)
         
-        # severity
-        with st.spinner("🔍 Analyzing severity & treatment recommendations..."):
-            gemini_output = get_gemini_analysis(image, predicted_label)
+        gemini_output = st.session_state.gemini_analyses[current_label]
 
-        st.markdown("## 🌡️ Disease Severity & Treatment (AI Expert Opinion)")
-        st.markdown(gemini_output)
-
-
-        # Get top 3 predictions
-        top3_indices = np.argsort(probabilities)[-3:][::-1]
-        top3_labels = [CLASS_LABELS[idx] for idx in top3_indices]
-
-        # Initialize session state variables if not already set
-        if st.session_state.top3_labels is None:
-            st.session_state.top3_labels = top3_labels
-
-        # Get the current label to show
-        current_label = st.session_state.top3_labels[st.session_state.label_index]
-
-        # Display result
+        # Display prediction
         st.success("✅ Prediction Complete!")
         st.markdown(f"### 🦠 Likely Disease: `{current_label}`")
+        
+        # Confidence score
+        current_idx = CLASS_LABELS.index(current_label)
+        current_confidence = st.session_state.probabilities[current_idx]
+        st.metric("Confidence", f"{current_confidence*100:.1f}%")
 
         # ✅ Styled repredict button
         st.markdown("""
@@ -266,40 +286,45 @@ if uploaded_file is not None:
             </style>
         """, unsafe_allow_html=True)
 
-        if st.button("Wrong Prediction? → Repredict"):
+        if st.button("🔄 Wrong Prediction? → Try Next Best Match"):
             st.session_state.label_index = (st.session_state.label_index + 1) % len(st.session_state.top3_labels)
             st.rerun()
 
-    # 💡 AI Assistance Chatbot
+        st.markdown("---")
+        st.markdown("## 🌡️ Disease Severity & Treatment (AI Expert Opinion)")
+        st.markdown(gemini_output)
+
+    # AI Assistance Link
+    st.markdown("---")
     st.markdown(
         """
-        <a href="https://549e1cfa6993f02828.gradio.live" target="_blank" style="text-decoration: none;">
-            <div style="margin-top: 10px; margin-bottom: 10px; padding: 10px; border-left: 5px solid #4a90e2; background-color: #e6f0ff; border-radius: 5px; color: black;">
-                💡 <strong>Get AI assisted help</strong>
-            </div>
-        </a>
+        <div style="margin-top: 10px; margin-bottom: 10px; padding: 15px; border-left: 5px solid #4a90e2; background-color: #e6f0ff; border-radius: 5px;">
+            💡 <strong>Need more help?</strong><br>
+            <span style="font-size: 14px;">Chat with our AI assistant for personalized farming advice.</span>
+        </div>
         """,
         unsafe_allow_html=True
     )
 
+    # Show all probabilities
     with st.expander("📊 Show All Class Probabilities", expanded=False):
         prob_df = pd.DataFrame({
             "Class": CLASS_LABELS,
-            "Probability": probabilities
-        }).set_index("Class").sort_values("Probability", ascending=True)
+            "Probability": st.session_state.probabilities
+        }).set_index("Class").sort_values("Probability", ascending=False)
         st.bar_chart(prob_df)
 
-    
-
 else:
-    # 💡 AI Assistance Chatbot
+    # Welcome message when no file uploaded
+    st.info("👆 Upload a plant leaf image to get started!")
+    
+    st.markdown("---")
     st.markdown(
         """
-        <a href="https://ecf82da8b217e9232e.gradio.live" target="_blank" style="text-decoration: none;">
-            <div style="margin-top: 10px; padding: 10px; border-left: 5px solid #4a90e2; background-color: #e6f0ff; border-radius: 5px; color: black;">
-                💡 <strong>Get AI assisted help</strong>
-            </div>
-        </a>
+        <div style="margin-top: 10px; padding: 15px; border-left: 5px solid #4a90e2; background-color: #e6f0ff; border-radius: 5px;">
+            💡 <strong>Need help getting started?</strong><br>
+            <span style="font-size: 14px;">Chat with our AI assistant for farming advice and tips.</span>
+        </div>
         """,
         unsafe_allow_html=True
     )
