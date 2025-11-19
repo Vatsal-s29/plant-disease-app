@@ -13,36 +13,35 @@ os.environ["GRPC_POLL_STRATEGY"] = "epoll1"
 
 import google.generativeai as genai
 
-# ✅ Safe API key configuration
+# ✅ 1. SET PAGE CONFIG FIRST - BEFORE ANY OTHER ST COMMAND
+st.set_page_config(
+    page_title="🌿 Plant Disease Classifier", 
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
+
+# ✅ 2. THEN configure API
 try:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-    # Add this after genai.configure() to debug
-    try:
-        st.write("### Available Models:")
-        for m in genai.list_models():
-            if 'generateContent' in m.supported_generation_methods:
-                st.write(f"- {m.name}")
-    except Exception as e:
-        st.error(f"Error listing models: {e}")
 except Exception as e:
     st.error("⚠️ Gemini API key not configured. Please set GEMINI_API_KEY in secrets.")
 
-# ✅ Mobile detection function
+# ✅ 3. Mobile detection function (no st commands here)
 def is_mobile_device():
     """Detect if user is on mobile using user agent."""
     try:
-        # Check for mobile user agent patterns
         user_agent = st.context.headers.get("User-Agent", "").lower()
         mobile_keywords = ['android', 'iphone', 'ipad', 'mobile', 'windows phone']
         return any(keyword in user_agent for keyword in mobile_keywords)
     except:
         return False
 
+# ✅ 4. UPDATED: Use available model from your list
 def get_gemini_analysis(image, predicted_label):
     """Get AI analysis of plant disease with error handling."""
     try:
-        # ✅ Works with google-generativeai >= 0.7.0
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        # ✅ Use one of the available models from your list
+        model = genai.GenerativeModel("gemini-2.5-flash")  # Fast and capable
         
         # Convert PIL image → bytes
         import io
@@ -81,6 +80,8 @@ def get_gemini_analysis(image, predicted_label):
     
     except Exception as e:
         return f"⚠️ **Analysis Error**: {str(e)}\n\nPlease try again or check your API configuration."
+
+# ... rest of your code (parameters, preprocessing functions, etc.)
 
 # ✅ Streamlit Page Config
 st.set_page_config(
