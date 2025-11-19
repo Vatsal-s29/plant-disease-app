@@ -33,7 +33,8 @@ def is_mobile_device():
 def get_gemini_analysis(image, predicted_label):
     """Get AI analysis of plant disease with error handling."""
     try:
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        # ✅ CORRECT
+        model = genai.GenerativeModel("gemini-1.5-flash-latest")
 
         # Convert PIL image → bytes
         import io
