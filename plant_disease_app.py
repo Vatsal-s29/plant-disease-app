@@ -33,47 +33,46 @@ def is_mobile_device():
 def get_gemini_analysis(image, predicted_label):
     """Get AI analysis of plant disease with error handling."""
     try:
-        # ✅ CORRECT
-        model = genai.GenerativeModel("gemini-1.5-flash-latest")
-
+        # ✅ Works with google-generativeai >= 0.7.0
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        
         # Convert PIL image → bytes
         import io
         img_byte_arr = io.BytesIO()
         image.convert("RGB").save(img_byte_arr, format="JPEG")
         img_bytes = img_byte_arr.getvalue()
-
+        
         prompt = f"""
         You are an expert agricultural plant pathologist.
-
+        
         The predicted disease is: **{predicted_label}**
-
+        
         Based on this disease, analyze the uploaded leaf image and provide:
-
+        
         1. **Severity** of the disease on a scale of 1 to 5  
            - 1 = very mild  
            - 5 = extremely severe
-
+        
         2. **Chemical Medicines** (with exact product names or active ingredients)
-
+        
         3. **Natural Remedies** (homemade, organic, biological controls)
-
+        
         4. **Best Farming Practices** specifically for this plant species
-
+        
         Format your response in clean markdown.
         """
-
+        
         response = model.generate_content(
             [
                 prompt,
                 {"mime_type": "image/jpeg", "data": img_bytes}
             ]
         )
-
+        
         return response.text if hasattr(response, "text") else str(response)
     
     except Exception as e:
         return f"⚠️ **Analysis Error**: {str(e)}\n\nPlease try again or check your API configuration."
-
 
 # ✅ Streamlit Page Config
 st.set_page_config(
