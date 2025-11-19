@@ -9,7 +9,6 @@ from tensorflow.keras.applications import (
     mobilenet_v2,
     efficientnet
 )
-import io  # ✅ Added for report download
 
 # ✅ Streamlit Page Config
 st.set_page_config(page_title="🌿 Plant Disease Classifier", layout="centered")
@@ -155,13 +154,23 @@ for i in range(0, len(static_species_diseases), 2):
 
 st.markdown("Upload an image of a plant leaf, and this ensemble-powered model will predict the disease class with high accuracy.")
 
+# Check if mobile
+is_mobile = st.query_params.get("mobile", ["false"])[0] == "true"
+
 # Upload Box
 uploaded_file = st.file_uploader("📤 Upload an image (jpg, jpeg, png)", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
     image = Image.open(uploaded_file).convert("RGB")
 
-    col1, col2 = st.columns([1, 1])
+    # ✅ Reset session state for new image upload
+    if "last_uploaded" not in st.session_state or st.session_state.last_uploaded != uploaded_file.name:
+        st.session_state.last_uploaded = uploaded_file.name
+        st.session_state.top3_labels = None
+        st.session_state.label_index = 0
+
+    columns = st.columns(1 if is_mobile else 2)
+    col1, col2 = columns
     with col1:
         st.image(image, caption="🖼️ Uploaded Leaf", use_container_width=True)
 
@@ -174,9 +183,8 @@ if uploaded_file is not None:
         top3_labels = [CLASS_LABELS[idx] for idx in top3_indices]
 
         # Initialize session state variables if not already set
-        if "top3_labels" not in st.session_state:
+        if st.session_state.top3_labels is None:
             st.session_state.top3_labels = top3_labels
-            st.session_state.label_index = 0  # Start with the top prediction
 
         # Get the current label to show
         current_label = st.session_state.top3_labels[st.session_state.label_index]
@@ -185,7 +193,7 @@ if uploaded_file is not None:
         st.success("✅ Prediction Complete!")
         st.markdown(f"### 🦠 Likely Disease: `{current_label}`")
 
-        # Inject CSS for orange smaller button
+        # ✅ Styled repredict button
         st.markdown("""
             <style>
             div.stButton > button:first-child {
@@ -205,12 +213,10 @@ if uploaded_file is not None:
             </style>
         """, unsafe_allow_html=True)
 
-        # Button to cycle predictions
         if st.button("Wrong Prediction? → Repredict"):
             st.session_state.label_index = (st.session_state.label_index + 1) % len(st.session_state.top3_labels)
             st.rerun()
 
-    # Chatbot
     # 💡 AI Assistance Chatbot
     st.markdown(
         """
@@ -234,7 +240,7 @@ else:
     # 💡 AI Assistance Chatbot
     st.markdown(
         """
-        <a href="https://549e1cfa6993f02828.gradio.live" target="_blank" style="text-decoration: none;">
+        <a href="https://ecf82da8b217e9232e.gradio.live" target="_blank" style="text-decoration: none;">
             <div style="margin-top: 10px; padding: 10px; border-left: 5px solid #4a90e2; background-color: #e6f0ff; border-radius: 5px; color: black;">
                 💡 <strong>Get AI assisted help</strong>
             </div>

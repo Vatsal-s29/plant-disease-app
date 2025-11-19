@@ -76,7 +76,7 @@ def ensemble_predict(image):
 
 # UI
 
-st.markdown("# 🌱 Welcome to the Plant Disease Detection App!")
+st.markdown("# 🌱 My Plant Buddy 🌱 ")
 st.write("This app uses an ensemble of deep learning models to predict the presence of plant diseases.")
 st.markdown("---")
 
