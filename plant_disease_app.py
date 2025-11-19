@@ -16,6 +16,14 @@ import google.generativeai as genai
 # ✅ Safe API key configuration
 try:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+    # Add this after genai.configure() to debug
+    try:
+        st.write("### Available Models:")
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                st.write(f"- {m.name}")
+    except Exception as e:
+        st.error(f"Error listing models: {e}")
 except Exception as e:
     st.error("⚠️ Gemini API key not configured. Please set GEMINI_API_KEY in secrets.")
 
