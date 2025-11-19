@@ -9,6 +9,47 @@ from tensorflow.keras.applications import (
     mobilenet_v2,
     efficientnet
 )
+import google.generativeai as genai
+genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+
+def get_gemini_analysis(image, predicted_label):
+    model = genai.GenerativeModel("gemini-1.5-flash")
+
+    # Convert PIL image → bytes
+    import io
+    img_byte_arr = io.BytesIO()
+    image.save(img_byte_arr, format='JPEG')
+    img_bytes = img_byte_arr.getvalue()
+
+    prompt = f"""
+    You are an expert agricultural plant pathologist.
+
+    The predicted disease is: **{predicted_label}**
+
+    Based on this disease, analyze the uploaded leaf image and provide:
+
+    1. **Severity** of the disease on a scale of 1 to 5  
+       - 1 = very mild  
+       - 5 = extremely severe
+
+    2. **Chemical Medicines** (with exact product names or active ingredients)
+
+    3. **Natural Remedies** (homemade, organic, biological controls)
+
+    4. **Best Farming Practices** specifically for this plant species
+
+    Format your response in clean markdown.
+    """
+
+    response = model.generate_content(
+        [
+            prompt,
+            {"mime_type": "image/jpeg", "data": img_bytes}
+        ]
+    )
+
+    return response.text
+
 
 # ✅ Streamlit Page Config
 st.set_page_config(page_title="🌿 Plant Disease Classifier", layout="centered")
@@ -177,6 +218,14 @@ if uploaded_file is not None:
     with col2:
         # Run prediction
         predicted_label, confidence, probabilities = ensemble_predict(image)
+        
+        # severity
+        with st.spinner("🔍 Analyzing severity & treatment recommendations..."):
+            gemini_output = get_gemini_analysis(image, predicted_label)
+
+        st.markdown("## 🌡️ Disease Severity & Treatment (AI Expert Opinion)")
+        st.markdown(gemini_output)
+
 
         # Get top 3 predictions
         top3_indices = np.argsort(probabilities)[-3:][::-1]
@@ -235,6 +284,8 @@ if uploaded_file is not None:
             "Probability": probabilities
         }).set_index("Class").sort_values("Probability", ascending=True)
         st.bar_chart(prob_df)
+
+    
 
 else:
     # 💡 AI Assistance Chatbot
