@@ -9,6 +9,9 @@ from tensorflow.keras.applications import (
     mobilenet_v2,
     efficientnet
 )
+import os
+os.environ["GRPC_POLL_STRATEGY"] = "epoll1"
+
 import google.generativeai as genai
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
