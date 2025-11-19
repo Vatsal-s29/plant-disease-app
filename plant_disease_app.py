@@ -18,7 +18,7 @@ def get_gemini_analysis(image, predicted_label):
     # Convert PIL image → bytes
     import io
     img_byte_arr = io.BytesIO()
-    image.save(img_byte_arr, format='JPEG')
+    image.convert("RGB").save(img_byte_arr, format="JPEG")
     img_bytes = img_byte_arr.getvalue()
 
     prompt = f"""
@@ -48,7 +48,8 @@ def get_gemini_analysis(image, predicted_label):
         ]
     )
 
-    return response.text
+    return response.text if hasattr(response, "text") else str(response)
+
 
 
 # ✅ Streamlit Page Config
