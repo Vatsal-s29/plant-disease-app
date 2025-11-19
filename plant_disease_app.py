@@ -289,21 +289,21 @@ if uploaded_file is not None:
             st.session_state.label_index = (st.session_state.label_index + 1) % len(st.session_state.top3_labels)
             st.rerun()
 
-        st.markdown("---")
-        st.markdown("## 🌡️ Disease Severity & Treatment (AI Expert Opinion)")
-        st.markdown(gemini_output)
-
-    # AI Assistance Link
     st.markdown("---")
-    st.markdown(
-        """
-        <div style="margin-top: 10px; margin-bottom: 10px; padding: 15px; border-left: 5px solid #4a90e2; background-color: #e6f0ff; border-radius: 5px;">
-            💡 <strong>Need more help?</strong><br>
-            <span style="font-size: 14px;">Chat with our AI assistant for personalized farming advice.</span>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    st.markdown("## 🌡️ Disease Severity & Treatment (AI Expert Opinion)")
+    st.markdown(gemini_output)
+
+    st.markdown("---")
+    # AI Assistance Link
+    # st.markdown(
+    #     """
+    #     <div style="margin-top: 10px; margin-bottom: 10px; padding: 15px; border-left: 5px solid #4a90e2; background-color: #e6f0ff; border-radius: 5px;">
+    #         💡 <strong>Need more help?</strong><br>
+    #         <span style="font-size: 14px;">Chat with our AI assistant for personalized farming advice.</span>
+    #     </div>
+    #     """,
+    #     unsafe_allow_html=True
+    # )
 
     # Show all probabilities
     with st.expander("📊 Show All Class Probabilities", expanded=False):
