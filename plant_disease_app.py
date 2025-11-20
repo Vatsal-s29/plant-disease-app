@@ -317,13 +317,13 @@ else:
     # Welcome message when no file uploaded
     st.info("👆 Upload a plant leaf image to get started!")
     
-    st.markdown("---")
-    st.markdown(
-        """
-        <div style="margin-top: 10px; padding: 15px; border-left: 5px solid #4a90e2; background-color: #e6f0ff; border-radius: 5px;">
-            💡 <strong>Need help getting started?</strong><br>
-            <span style="font-size: 14px;">Chat with our AI assistant for farming advice and tips.</span>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    # st.markdown("---")
+    # st.markdown(
+    #     """
+    #     <div style="margin-top: 10px; padding: 15px; border-left: 5px solid #4a90e2; background-color: #e6f0ff; border-radius: 5px;">
+    #         💡 <strong>Need help getting started?</strong><br>
+    #         <span style="font-size: 14px;">Chat with our AI assistant for farming advice and tips.</span>
+    #     </div>
+    #     """,
+    #     unsafe_allow_html=True
+    # )
