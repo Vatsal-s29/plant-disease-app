@@ -57,7 +57,7 @@ Based on this disease, analyze the uploaded leaf image and provide a concise rep
 
 Format your response EXACTLY as shown below:
 
-#### Severity: [1-5]
+#### Severity: [1-5]/5
 [One sentence explaining why this severity score]
 
 #### Remedies
