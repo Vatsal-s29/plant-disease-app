@@ -300,7 +300,7 @@ if uploaded_file is not None:
             st.rerun()
 
     st.markdown("---")
-    st.markdown("### 🌡️ Disease Severity & Treatment (AI Expert Opinion)")
+    st.markdown("### 🌡️ Disease Severity & Treatment")
     st.markdown(gemini_output)
 
     st.markdown("---")
