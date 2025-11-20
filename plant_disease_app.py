@@ -49,41 +49,34 @@ def get_gemini_analysis(image, predicted_label):
         img_bytes = img_byte_arr.getvalue()
         
         prompt = f"""
-        You are an expert agricultural plant pathologist.
-        
-        The predicted disease is: **{predicted_label}**
-        
-        Based on this disease, analyze the uploaded leaf image and provide:
-        
-        1. **Severity** of the disease on a scale of 1 to 5  
-           - 1 = very mild  
-           - 5 = extremely severe
-           (just the score and a one liner explanation of why this score)
-        
-        2. **Chemical Medicines** (with exact product names or active ingredients)
-        (only three product names in an ordered list, along with one liner explanation about them)
-        
-        3. **Natural Remedies** (homemade, organic, biological controls)
-        (only three product names in an ordered list, along with one liner explanation about them)
-        
-        4. **Best Farming Practices** specifically for this plant species
-        (Three one-liner points)
-        
-        Format your response in clean markdown, like so :
-        #### Severity : {score}
-        {a one liner explanation of why this score}
+You are an expert agricultural plant pathologist.
 
-        #### Remedies
+The predicted disease is: **{predicted_label}**
 
-        ##### Chemical Remedies
-        {only three product names in an ordered list, along with one liner explanation about them}
+Based on this disease, analyze the uploaded leaf image and provide a concise report.
 
-        ##### Natural Remedies
-        {only three product names in an ordered list, along with one liner explanation about them}
+Format your response EXACTLY as shown below:
 
-        ##### Nest Farming Practices
-        {Three one-liner points}
-        """
+#### Severity: [1-5]
+[One sentence explaining why this severity score]
+
+#### Remedies
+
+##### Chemical Remedies
+1. **[Product Name]** - [One sentence about usage/effectiveness]
+2. **[Product Name]** - [One sentence about usage/effectiveness]
+3. **[Product Name]** - [One sentence about usage/effectiveness]
+
+##### Natural Remedies
+1. **[Method/Ingredient]** - [One sentence about application]
+2. **[Method/Ingredient]** - [One sentence about application]
+3. **[Method/Ingredient]** - [One sentence about application]
+
+##### Best Farming Practices
+- [One concise practice]
+- [One concise practice]
+- [One concise practice]
+"""
         
         response = model.generate_content(
             [
