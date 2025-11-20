@@ -69,7 +69,20 @@ def get_gemini_analysis(image, predicted_label):
         4. **Best Farming Practices** specifically for this plant species
         (Three one-liner points)
         
-        Format your response in clean markdown.
+        Format your response in clean markdown, like so :
+        #### Severity : {score}
+        {a one liner explanation of why this score}
+
+        #### Remedies
+
+        ##### Chemical Remedies
+        {only three product names in an ordered list, along with one liner explanation about them}
+
+        ##### Natural Remedies
+        {only three product names in an ordered list, along with one liner explanation about them}
+
+        ##### Nest Farming Practices
+        {Three one-liner points}
         """
         
         response = model.generate_content(
