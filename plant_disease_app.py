@@ -58,12 +58,16 @@ def get_gemini_analysis(image, predicted_label):
         1. **Severity** of the disease on a scale of 1 to 5  
            - 1 = very mild  
            - 5 = extremely severe
+           (just the score and a one liner explanation of why this score)
         
         2. **Chemical Medicines** (with exact product names or active ingredients)
+        (only three product names in an ordered list, along with one liner explanation about them)
         
         3. **Natural Remedies** (homemade, organic, biological controls)
+        (only three product names in an ordered list, along with one liner explanation about them)
         
         4. **Best Farming Practices** specifically for this plant species
+        (Three one-liner points)
         
         Format your response in clean markdown.
         """
@@ -290,7 +294,7 @@ if uploaded_file is not None:
             st.rerun()
 
     st.markdown("---")
-    st.markdown("## 🌡️ Disease Severity & Treatment (AI Expert Opinion)")
+    st.markdown("### 🌡️ Disease Severity & Treatment (AI Expert Opinion)")
     st.markdown(gemini_output)
 
     st.markdown("---")
